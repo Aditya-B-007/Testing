@@ -11,12 +11,6 @@ TEXT_MODEL_PATH = "sentence-transformers/all-MiniLM-L6-v2"
 CLIP_MODEL_NAME = "clip-ViT-B-32"
 IMAGE_COLLECTION_NAME = "multimodal_docs_image"
 
-# Load environment variables
-load_dotenv()
-MANUAL_API_KEY = "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"  
-if MANUAL_API_KEY:
-    os.environ["HUGGINGFACE_API_KEY"] = MANUAL_API_KEY
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -112,7 +106,7 @@ def retrieve_relevant_images(query_text: str, n_results: int = 3) -> Optional[Di
         logger.error(f"Error searching images: {e}")
         return None
 
-def data_assembly_step(results: Dict[str, Any]):
+def data_assembly_step(results: Dict[str, Any], print_header: bool = True):
     """
     Loops through the results and prints a formatted summary for each match.
     """
@@ -120,9 +114,10 @@ def data_assembly_step(results: Dict[str, Any]):
         print("\n[Data Assembly] No relevant context could be resolved.")
         return
 
-    print("\n" + "="*70)
-    print(" DATA ASSEMBLY: SIMILARITY SEARCH SUMMARY")
-    print("="*70)
+    if print_header:
+        print("\n" + "="*70)
+        print(" DATA ASSEMBLY: SIMILARITY SEARCH SUMMARY")
+        print("="*70)
 
     # ChromaDB returns results as lists of lists (supporting multiple queries)
     # We extract the first (and only) query result set.
@@ -141,14 +136,15 @@ def data_assembly_step(results: Dict[str, Any]):
         print(f"Note Snippet: {snippet}")
         print("-" * 70)
 
-def display_image_results(results: Dict[str, Any]):
+def display_image_results(results: Dict[str, Any], print_header: bool = True):
     if not results or not results.get('ids') or len(results['ids'][0]) == 0:
         print("\n[Image Search] No relevant images found.")
         return
 
-    print("\n" + "="*70)
-    print(" IMAGE SEARCH SUMMARY")
-    print("="*70)
+    if print_header:
+        print("\n" + "="*70)
+        print(" IMAGE SEARCH SUMMARY")
+        print("="*70)
 
     ids = results['ids'][0]
     metas = results['metadatas'][0]
@@ -162,6 +158,31 @@ def display_image_results(results: Dict[str, Any]):
         print(f"Path    : {path}")
         print("-" * 70)
 
+def unified_search(query_text: str, n_results: int = 3):
+    """
+    Performs both text and image searches and displays a unified view.
+    """
+    print(f"\nPerforming Unified Search for: '{query_text}'...")
+    
+    text_results = retrieve_relevant_context(query_text, n_results=n_results)
+    image_results = retrieve_relevant_images(query_text, n_results=n_results)
+    
+    print("\n" + "="*70)
+    print(f" UNIFIED SEARCH REPORT: '{query_text}'")
+    print("="*70)
+    
+    print("\n--- Clinical Documents ---")
+    if text_results:
+        data_assembly_step(text_results, print_header=False)
+    else:
+        print("No relevant documents found.")
+        
+    print("\n--- Medical Imaging ---")
+    if image_results:
+        display_image_results(image_results, print_header=False)
+    else:
+        print("No relevant images found.")
+
 if __name__ == "__main__":
     # Check for API key before running
     if not os.getenv("HUGGINGFACE_API_KEY"):
@@ -174,8 +195,4 @@ if __name__ == "__main__":
     # Example Query for testing
     query_text = input("Please enter your query....")
     
-    search_results = retrieve_relevant_context(query_text)
-    data_assembly_step(search_results)
-
-    image_results = retrieve_relevant_images(query_text)
-    display_image_results(image_results)
+    unified_search(query_text)

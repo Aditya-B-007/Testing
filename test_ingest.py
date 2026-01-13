@@ -2,7 +2,7 @@ import os
 import logging
 from PIL import Image
 from dotenv import load_dotenv
-from multimodal_ingest import process_and_store, CLIP_MODEL_NAME
+from multimodal_ingest import process_batch, CLIP_MODEL_NAME
 
 # Load environment variables from .env file
 load_dotenv()
@@ -42,11 +42,12 @@ def main():
     text_path, image_path = create_sample_data()
 
     try:
-        logger.info(f"Testing ingestion for text: {text_path}")
-        process_and_store(text_path)
-        
-        logger.info(f"Testing ingestion for image: {image_path} using {CLIP_MODEL_NAME}")
-        process_and_store(image_path)
+        logger.info(f"Testing batch ingestion for: {text_path} and {image_path}")
+        batch_data = [
+            {"path": text_path, "patient_id": "P_TEST_001", "hospital_id": "H_TEST_001"},
+            {"path": image_path, "patient_id": "P_TEST_001", "hospital_id": "H_TEST_001"}
+        ]
+        process_batch(batch_data)
         
         logger.info("Ingestion test completed successfully.")
         
